@@ -31,7 +31,7 @@ func (b *Builder) Prepare(raws ...interface{}) ([]string, error) {
 }
 
 func (b *Builder) Run(ctx context.Context, ui packer.Ui, hook packer.Hook) (packer.Artifact, error) {
-	client  :=gsclient.NewClient(gsclient.DefaultConfiguration(b.config.APIKey, b.config.APIToken))
+	client := gsclient.NewClient(gsclient.DefaultConfiguration(b.config.APIKey, b.config.APIToken))
 
 	// Set up the state
 	state := new(multistep.BasicStateBag)

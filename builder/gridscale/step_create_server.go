@@ -11,7 +11,8 @@ import (
 )
 
 type stepCreateServer struct {
-	serverId string
+	serverId  string
+	storageId string
 }
 
 func (s *stepCreateServer) Run(ctx context.Context, state multistep.StateBag) multistep.StepAction {
@@ -25,7 +26,7 @@ func (s *stepCreateServer) Run(ctx context.Context, state multistep.StateBag) mu
 
 	server, err := client.CreateServer(context.Background(), gsclient.ServerCreateRequest{
 		Name:   c.ServerName,
-		Cores: c.ServerCores,
+		Cores:  c.ServerCores,
 		Memory: c.ServerMemory,
 	})
 	if err != nil {
@@ -40,7 +41,32 @@ func (s *stepCreateServer) Run(ctx context.Context, state multistep.StateBag) mu
 
 	// Store the server id for later
 	state.Put("server_id", server.ObjectUUID)
+	ui.Say("Creating Storage...")
+	//Create a storage
+	template := gsclient.StorageTemplate{
+		Password:     c.Password,
+		PasswordType: gsclient.PlainPasswordType,
+		Hostname:     c.Hostname,
+		TemplateUUID: c.TemplateUUID,
+	}
 
+	storage, err := client.CreateStorage(
+		context.Background(),
+		gsclient.StorageCreateRequest{
+			Capacity:    c.StorageCapacity,
+			Name:        c.ServerName,
+			StorageType: gsclient.InsaneStorageType,
+			Template:    &template,
+		})
+	if err != nil {
+		ui.Error(fmt.Sprintf(
+			"Error creating storage: %s", err))
+	}
+	s.storageId = storage.ObjectUUID
+	state.Put("storage_id", storage.ObjectUUID)
+	ui.Say("Link Server with Storage...")
+
+	client.LinkStorage(context.Background(), server.ObjectUUID, storage.ObjectUUID, true)
 	return multistep.ActionContinue
 }
 
@@ -59,5 +85,13 @@ func (s *stepCreateServer) Cleanup(state multistep.StateBag) {
 	if err != nil {
 		ui.Error(fmt.Sprintf(
 			"Error destroying server. Please destroy it manually: %s", err))
+	}
+
+	// Destroy the storage we just created
+	ui.Say("Destroying storage...")
+	err = client.DeleteStorage(context.TODO(), s.storageId)
+	if err != nil {
+		ui.Error(fmt.Sprintf(
+			"Error destroying storage. Please destroy it manually: %s", err))
 	}
 }

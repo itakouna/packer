@@ -15,19 +15,19 @@ import (
 type stepCreateSSHKey struct {
 	Debug        bool
 	DebugKeyPath string
-	keyId string
+	keyId        string
 }
 
 func (s *stepCreateSSHKey) Run(ctx context.Context, state multistep.StateBag) multistep.StepAction {
 	client := state.Get("client").(*gsclient.Client)
 	ui := state.Get("ui").(packer.Ui)
 	c := state.Get("config").(*Config)
-	
+
 	ui.Say("Creating temporary ssh key for server...")
-ui.Say(c.SSHKey)
+	ui.Say(c.SSHKey)
 	// Create the key!
 	resp, err := client.CreateSshkey(context.TODO(), gsclient.SshkeyCreateRequest{
-		Name: fmt.Sprintf("packer-%s", uuid.TimeOrderedUUID()),
+		Name:   fmt.Sprintf("packer-%s", uuid.TimeOrderedUUID()),
 		Sshkey: c.SSHKey,
 	})
 	if err != nil {
