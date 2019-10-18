@@ -8,12 +8,13 @@ import (
 	"github.com/gridscale/gsclient-go"
 
 	"github.com/hashicorp/packer/common"
+	"github.com/hashicorp/packer/helper/communicator"
 	"github.com/hashicorp/packer/helper/multistep"
 	"github.com/hashicorp/packer/packer"
 )
 
 // The unique id for the builder
-const BuilderId = "template.gridscale"
+const BuilderId = "packer.gridscale"
 
 type Builder struct {
 	config Config
@@ -44,9 +45,15 @@ func (b *Builder) Run(ctx context.Context, ui packer.Ui, hook packer.Hook) (pack
 	steps := []multistep.Step{
 		&stepCreateSSHKey{
 			Debug:        b.config.PackerDebug,
-			DebugKeyPath: fmt.Sprintf("do_%s.pem", b.config.PackerBuildName),
+			DebugKeyPath: fmt.Sprintf("gs_%s.pem", b.config.PackerBuildName),
 		},
 		new(stepCreateServer),
+		&communicator.StepConnect{
+			Config:    &b.config.Comm,
+			Host:      communicator.CommHost(b.config.Comm.SSHHost, "server_ip"),
+			SSHConfig: b.config.Comm.SSHConfigFunc(),
+		},
+		&common.StepProvision{},
 	}
 
 	// Run the steps

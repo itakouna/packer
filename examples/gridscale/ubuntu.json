@@ -1,26 +1,26 @@
 {
   "variables": {
-    "password": "gridscale_2019",
-    "ssh_key": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDF9dcAqtGXMzGVdI6b+aGaVhJxPfXeGBhLMVyblEvERXZ+/Oo+ir3yLHk8IeyYc2IblDTvcM9phMNCDyrKeGq+4xUDwABdgK75YQUD/HhnzLv/kPHYD1R/scUYMTaipITOcCGQ4SBamjytGpwZjC5fKGeFrcZuxHq8F7Yn78WxQE3yBCT0uuL4S4soQTXIIBSDHIFrZ+Fl6s+ZrKAfOToZgcC4gqSFKKPEiL7L0uoKqFANFKuymPqyoESJKyVSMMANtHsMri+nzGRX4iYE06Nd7t2kL6gi3N27+0jF6Es1wu4F7QfQTryMiDDJxhe6P8FHy1rQ7McUhBC1mDW3JOWP",
-    "server_name": "servetest",
-    "server_cores": "1",
-    "server_memory": "1"
+    "password": "gridscale2019",
+    "hostname": "ubuntu",
+    "server_cores": "2",
+    "server_memory": "2",
+    "storage_capacity": "20",
+    "template_uuid": "4db64bfc-9fb2-4976-80b5-94ff43b1233a"
   },
 
   "builders": [{
     "type": "gridscale",
-    "ssh_password": "{{user `password`}}",
-    "ssh_key": "{{user `ssh_key`}}",
-    "server_name": "{{user `server_name`}}",
+    "password": "{{user `password`}}",
+    "hostname": "{{user `hostname`}}",
+    "ssh_username" : "root",
     "server_memory": "{{user `server_memory`}}",
     "server_cores": "{{user `server_cores`}}",
-
-    "ssh_username": "ubuntu"
+    "storage_capacity": "{{user `storage_capacity`}}",
+    "template_uuid": "{{user `template_uuid`}}"
   }],
 
   "provisioners": [{
     "type": "shell",
-    "execute_command": "echo '{{user `password`}}' | sudo -S '{{.Path}}'",
     "inline": [
       "sleep 30",
       "sudo apt update",

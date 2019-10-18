@@ -1,11 +1,19 @@
 package gridscale
 
 import (
+	"bytes"
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"log"
+	"os"
+	"runtime"
 
 	"github.com/gridscale/gsclient-go"
+	"golang.org/x/crypto/ssh"
 
 	"github.com/hashicorp/packer/common/uuid"
 	"github.com/hashicorp/packer/helper/multistep"
@@ -24,11 +32,20 @@ func (s *stepCreateSSHKey) Run(ctx context.Context, state multistep.StateBag) mu
 	c := state.Get("config").(*Config)
 
 	ui.Say("Creating temporary ssh key for server...")
-	ui.Say(c.SSHKey)
-	// Create the key!
+	priv, err := rsa.GenerateKey(rand.Reader, 2048)
+	priv_der := x509.MarshalPKCS1PrivateKey(priv)
+	priv_blk := pem.Block{
+		Type:    "RSA PRIVATE KEY",
+		Headers: nil,
+		Bytes:   priv_der,
+	}
+
+	c.Comm.SSHPrivateKey = pem.EncodeToMemory(&priv_blk)
+	pub, _ := ssh.NewPublicKey(&priv.PublicKey)
+
 	resp, err := client.CreateSshkey(context.TODO(), gsclient.SshkeyCreateRequest{
 		Name:   fmt.Sprintf("packer-%s", uuid.TimeOrderedUUID()),
-		Sshkey: c.SSHKey,
+		Sshkey: string(bytes.Trim(ssh.MarshalAuthorizedKey(pub), "\n")),
 	})
 	if err != nil {
 		err := fmt.Errorf("Error getting temporary SSH key: %s", err)
@@ -37,19 +54,38 @@ func (s *stepCreateSSHKey) Run(ctx context.Context, state multistep.StateBag) mu
 		return multistep.ActionHalt
 	}
 
-	// We use this to check cleanup
 	s.keyId = resp.ObjectUUID
-
-	log.Printf("temporary ssh key name: %s", resp.ObjectUUID)
-
-	// Remember some state for the future
 	state.Put("ssh_key_id", resp.ObjectUUID)
+
+	// If we're in debug mode, output the private key to the working directory.
+	if s.Debug {
+		ui.Message(fmt.Sprintf("Saving key for debug purposes: %s", s.DebugKeyPath))
+		f, err := os.Create(s.DebugKeyPath)
+		if err != nil {
+			state.Put("error", fmt.Errorf("Error saving debug key: %s", err))
+			return multistep.ActionHalt
+		}
+		defer f.Close()
+
+		// Write the key out
+		if _, err := f.Write(pem.EncodeToMemory(&priv_blk)); err != nil {
+			state.Put("error", fmt.Errorf("Error saving debug key: %s", err))
+			return multistep.ActionHalt
+		}
+
+		// Chmod it so that it is SSH ready
+		if runtime.GOOS != "windows" {
+			if err := f.Chmod(0600); err != nil {
+				state.Put("error", fmt.Errorf("Error setting permissions of debug key: %s", err))
+				return multistep.ActionHalt
+			}
+		}
+	}
 
 	return multistep.ActionContinue
 }
 
 func (s *stepCreateSSHKey) Cleanup(state multistep.StateBag) {
-	// If no key name is set, then we never created it, so just return
 	if s.keyId == "" {
 		return
 	}

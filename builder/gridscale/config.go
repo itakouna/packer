@@ -20,17 +20,14 @@ type Config struct {
 	Comm                communicator.Config `mapstructure:",squash"`
 	// The client TOKEN to use to access your account.
 
-	APIToken     string `mapstructure:"api_token" required:"true"`
-	APIKey       string `mapstructure:"api_key" required:"true"`
-	SnapshotName string `mapstructure:"snapshot_name" required:"false"`
-	Hostname     string `mapstructure:"hostname" required:"false"`
-
-	Password string `mapstructure:"password" required:"false"`
-
+	APIToken        string   `mapstructure:"api_token" required:"true"`
+	APIKey          string   `mapstructure:"api_key" required:"true"`
+	SnapshotName    string   `mapstructure:"snapshot_name" required:"false"`
+	Hostname        string   `mapstructure:"hostname" required:"false"`
+	Password        string   `mapstructure:"password" required:"false"`
 	ServerName      string   `mapstructure:"server_name" required:"false"`
 	ServerCores     int      `mapstructure:"server_cores" required:"true"`
 	ServerMemory    int      `mapstructure:"server_memory" required:"true"`
-	SSHKey          string   `mapstructure:"ssh_key" required:"true"`
 	StorageCapacity int      `mapstructure:"storage_capacity" required:"true"`
 	TemplateUUID    string   `mapstructure:"template_uuid" required:"true"`
 	Tags            []string `mapstructure:"tags" required:"false"`
