@@ -11,8 +11,8 @@ import (
 )
 
 type stepCreateServer struct {
-	serverId  string
-	storageId string
+	serverID  string
+	storageID string
 	ipID      string
 }
 
@@ -31,7 +31,6 @@ func (s *stepCreateServer) Run(ctx context.Context, state multistep.StateBag) mu
 		return multistep.ActionHalt
 	}
 
-	// Create the server based on configuration
 	ui.Say("Creating server...")
 	requestBody := gsclient.ServerCreateRequest{
 		Name:   c.ServerName,
@@ -47,11 +46,10 @@ func (s *stepCreateServer) Run(ctx context.Context, state multistep.StateBag) mu
 		return multistep.ActionHalt
 	}
 
-	s.serverId = server.ObjectUUID
+	s.serverID = server.ObjectUUID
 	state.Put("server_id", server.ObjectUUID)
 
 	ui.Say("Creating Storage...")
-	//Create a storage
 	var sshkeys []string
 	template := gsclient.StorageTemplate{
 		Password:     c.Password,
@@ -77,14 +75,13 @@ func (s *stepCreateServer) Run(ctx context.Context, state multistep.StateBag) mu
 		return multistep.ActionHalt
 	}
 
-	s.storageId = storage.ObjectUUID
+	s.storageID = storage.ObjectUUID
 	state.Put("storage_id", storage.ObjectUUID)
 
 	ipRequest := gsclient.IPCreateRequest{
 		Name:   c.ServerName,
 		Family: gsclient.IPv4Type,
 	}
-	//Create new IP
 	ui.Say("Create IP...")
 	ip, err := client.CreateIP(context.Background(), ipRequest)
 
@@ -118,23 +115,23 @@ func (s *stepCreateServer) Cleanup(state multistep.StateBag) {
 	client := state.Get("client").(*gsclient.Client)
 	ui := state.Get("ui").(packer.Ui)
 
-	if s.serverId != "" {
+	if s.serverID != "" {
 		ui.Say("Shutdown Server...")
-		client.ShutdownServer(context.Background(), s.serverId)
+		client.ShutdownServer(context.Background(), s.serverID)
 	}
 
-	if s.serverId != "" {
+	if s.serverID != "" {
 		ui.Say("Destroying server...")
-		err := client.DeleteServer(context.TODO(), s.serverId)
+		err := client.DeleteServer(context.TODO(), s.serverID)
 		if err != nil {
 			ui.Error(fmt.Sprintf(
 				"Error destroying server. Please destroy it manually: %s", err))
 		}
 	}
 
-	if s.storageId != "" {
+	if s.storageID != "" {
 		ui.Say("Destroying storage...")
-		err := client.DeleteStorage(context.TODO(), s.storageId)
+		err := client.DeleteStorage(context.TODO(), s.storageID)
 		if err != nil {
 			ui.Error(fmt.Sprintf(
 				"Error destroying storage. Please destroy it manually: %s", err))

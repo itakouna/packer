@@ -57,7 +57,6 @@ func (s *stepCreateSSHKey) Run(ctx context.Context, state multistep.StateBag) mu
 	s.keyId = resp.ObjectUUID
 	state.Put("ssh_key_id", resp.ObjectUUID)
 
-	// If we're in debug mode, output the private key to the working directory.
 	if s.Debug {
 		ui.Message(fmt.Sprintf("Saving key for debug purposes: %s", s.DebugKeyPath))
 		f, err := os.Create(s.DebugKeyPath)
