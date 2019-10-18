@@ -12,7 +12,6 @@ import (
 
 	"github.com/hashicorp/packer/packer"
 	"github.com/hashicorp/packer/packer/plugin"
-
 	alicloudecsbuilder "github.com/hashicorp/packer/builder/alicloud/ecs"
 	amazonchrootbuilder "github.com/hashicorp/packer/builder/amazon/chroot"
 	amazonebsbuilder "github.com/hashicorp/packer/builder/amazon/ebs"
@@ -60,6 +59,7 @@ import (
 	vmwareisobuilder "github.com/hashicorp/packer/builder/vmware/iso"
 	vmwarevmxbuilder "github.com/hashicorp/packer/builder/vmware/vmx"
 	yandexbuilder "github.com/hashicorp/packer/builder/yandex"
+	gridscalebuilder "github.com/hashicorp/packer/builder/gridscale"
 	alicloudimportpostprocessor "github.com/hashicorp/packer/post-processor/alicloud-import"
 	amazonimportpostprocessor "github.com/hashicorp/packer/post-processor/amazon-import"
 	artificepostprocessor "github.com/hashicorp/packer/post-processor/artifice"
@@ -150,6 +150,8 @@ var Builders = map[string]packer.Builder{
 	"vmware-iso":          new(vmwareisobuilder.Builder),
 	"vmware-vmx":          new(vmwarevmxbuilder.Builder),
 	"yandex":              new(yandexbuilder.Builder),
+	"gridscale":           new(gridscalebuilder.Builder),
+
 }
 
 var Provisioners = map[string]packer.Provisioner{

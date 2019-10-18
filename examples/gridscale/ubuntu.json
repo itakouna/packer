@@ -1,0 +1,30 @@
+{
+  "variables": {
+    "password": "gridscale_2019",
+    "ssh_key": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDF9dcAqtGXMzGVdI6b+aGaVhJxPfXeGBhLMVyblEvERXZ+/Oo+ir3yLHk8IeyYc2IblDTvcM9phMNCDyrKeGq+4xUDwABdgK75YQUD/HhnzLv/kPHYD1R/scUYMTaipITOcCGQ4SBamjytGpwZjC5fKGeFrcZuxHq8F7Yn78WxQE3yBCT0uuL4S4soQTXIIBSDHIFrZ+Fl6s+ZrKAfOToZgcC4gqSFKKPEiL7L0uoKqFANFKuymPqyoESJKyVSMMANtHsMri+nzGRX4iYE06Nd7t2kL6gi3N27+0jF6Es1wu4F7QfQTryMiDDJxhe6P8FHy1rQ7McUhBC1mDW3JOWP",
+    "server_name": "servetest",
+    "server_cores": "1",
+    "server_memory": "1"
+  },
+
+  "builders": [{
+    "type": "gridscale",
+    "ssh_password": "{{user `password`}}",
+    "ssh_key": "{{user `ssh_key`}}",
+    "server_name": "{{user `server_name`}}",
+    "server_memory": "{{user `server_memory`}}",
+    "server_cores": "{{user `server_cores`}}",
+
+    "ssh_username": "ubuntu"
+  }],
+
+  "provisioners": [{
+    "type": "shell",
+    "execute_command": "echo '{{user `password`}}' | sudo -S '{{.Path}}'",
+    "inline": [
+      "sleep 30",
+      "sudo apt update",
+      "sudo apt install nginx -y"
+    ]
+  }]
+}
