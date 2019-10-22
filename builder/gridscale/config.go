@@ -20,17 +20,19 @@ type Config struct {
 	Comm                communicator.Config `mapstructure:",squash"`
 	// The client TOKEN to use to access your account.
 
-	APIToken        string   `mapstructure:"api_token" required:"true"`
-	APIKey          string   `mapstructure:"api_key" required:"true"`
-	SnapshotName    string   `mapstructure:"snapshot_name" required:"false"`
-	Hostname        string   `mapstructure:"hostname" required:"false"`
-	Password        string   `mapstructure:"password" required:"false"`
-	ServerName      string   `mapstructure:"server_name" required:"false"`
-	ServerCores     int      `mapstructure:"server_cores" required:"true"`
-	ServerMemory    int      `mapstructure:"server_memory" required:"true"`
-	StorageCapacity int      `mapstructure:"storage_capacity" required:"true"`
-	TemplateUUID    string   `mapstructure:"template_uuid" required:"true"`
-	Tags            []string `mapstructure:"tags" required:"false"`
+	APIToken     string `mapstructure:"api_token" required:"true"`
+	APIKey       string `mapstructure:"api_key" required:"true"`
+	TemplateName string `mapstructure:"template_name" required:"false"`
+
+	Hostname        string `mapstructure:"hostname" required:"false"`
+	Password        string `mapstructure:"password" required:"false"`
+	ServerName      string `mapstructure:"server_name" required:"false"`
+	ServerCores     int    `mapstructure:"server_cores" required:"true"`
+	ServerMemory    int    `mapstructure:"server_memory" required:"true"`
+	StorageCapacity int    `mapstructure:"storage_capacity" required:"true"`
+	TemplateUUID    string `mapstructure:"template_uuid" required:"true"`
+
+	Tags []string `mapstructure:"tags" required:"false"`
 
 	ctx interpolate.Context
 }
@@ -63,14 +65,14 @@ func NewConfig(raws ...interface{}) (*Config, []string, error) {
 		c.APIKey = os.Getenv("GRIDSCALE_UUID")
 	}
 
-	if c.SnapshotName == "" {
+	if c.TemplateName == "" {
 		def, err := interpolate.Render("packer-{{timestamp}}", nil)
 		if err != nil {
 			panic(err)
 		}
 
 		// Default to packer-{{ unix timestamp (utc) }}
-		c.SnapshotName = def
+		c.TemplateName = def
 	}
 
 	if c.ServerName == "" {

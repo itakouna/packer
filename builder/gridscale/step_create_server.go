@@ -32,13 +32,13 @@ func (s *stepCreateServer) Run(ctx context.Context, state multistep.StateBag) mu
 	}
 
 	ui.Say("Creating server...")
-	requestBody := gsclient.ServerCreateRequest{
-		Name:   c.ServerName,
-		Cores:  c.ServerCores,
-		Memory: c.ServerMemory,
-	}
-
-	server, err := client.CreateServer(context.Background(), requestBody)
+	server, err := client.CreateServer(
+		context.Background(),
+		gsclient.ServerCreateRequest{
+			Name:   c.ServerName,
+			Cores:  c.ServerCores,
+			Memory: c.ServerMemory,
+		})
 	if err != nil {
 		err := fmt.Errorf("Error creating server: %s", err)
 		state.Put("error", err)
@@ -51,13 +51,6 @@ func (s *stepCreateServer) Run(ctx context.Context, state multistep.StateBag) mu
 
 	ui.Say("Creating Storage...")
 	var sshkeys []string
-	template := gsclient.StorageTemplate{
-		Password:     c.Password,
-		PasswordType: gsclient.PlainPasswordType,
-		Hostname:     c.Hostname,
-		Sshkeys:      append(sshkeys, sshKeyId),
-		TemplateUUID: c.TemplateUUID,
-	}
 
 	storage, err := client.CreateStorage(
 		context.Background(),
@@ -65,7 +58,13 @@ func (s *stepCreateServer) Run(ctx context.Context, state multistep.StateBag) mu
 			Capacity:    c.StorageCapacity,
 			Name:        c.ServerName,
 			StorageType: gsclient.InsaneStorageType,
-			Template:    &template,
+			Template: &gsclient.StorageTemplate{
+				Password:     c.Password,
+				PasswordType: gsclient.PlainPasswordType,
+				Hostname:     c.Hostname,
+				Sshkeys:      append(sshkeys, sshKeyId),
+				TemplateUUID: c.TemplateUUID,
+			},
 		})
 	if err != nil {
 		ui.Error(fmt.Sprintf(
@@ -78,16 +77,16 @@ func (s *stepCreateServer) Run(ctx context.Context, state multistep.StateBag) mu
 	s.storageID = storage.ObjectUUID
 	state.Put("storage_id", storage.ObjectUUID)
 
-	ipRequest := gsclient.IPCreateRequest{
-		Name:   c.ServerName,
-		Family: gsclient.IPv4Type,
-	}
-	ui.Say("Create IP...")
-	ip, err := client.CreateIP(context.Background(), ipRequest)
-
+	ui.Say("Creating IP...")
+	ip, err := client.CreateIP(
+		context.Background(),
+		gsclient.IPCreateRequest{
+			Name:   c.ServerName,
+			Family: gsclient.IPv4Type,
+		})
 	if err != nil {
 		ui.Error(fmt.Sprintf(
-			"Error creating storage: %s", err))
+			"Error creating IP: %s", err))
 		state.Put("error", err)
 		ui.Error(err.Error())
 		return multistep.ActionHalt
@@ -96,18 +95,45 @@ func (s *stepCreateServer) Run(ctx context.Context, state multistep.StateBag) mu
 	s.ipID = ip.ObjectUUID
 	state.Put("server_ip", ip.IP)
 
-	ui.Say("Link Server with IP...")
-	client.LinkIP(context.Background(), server.ObjectUUID, ip.ObjectUUID)
+	ui.Say("Linking Server with IP...")
+	err = client.LinkIP(context.Background(), server.ObjectUUID, ip.ObjectUUID)
+	if err != nil {
+		ui.Error(fmt.Sprintf(
+			"Error linking Server with IP: %s", err))
+		state.Put("error", err)
+		ui.Error(err.Error())
+		return multistep.ActionHalt
+	}
 
-	ui.Say("Link Server with Storage...")
-	client.LinkStorage(context.Background(), server.ObjectUUID, storage.ObjectUUID, true)
+	ui.Say("Linking Server with Storage...")
+	err = client.LinkStorage(context.Background(), server.ObjectUUID, storage.ObjectUUID, true)
+	if err != nil {
+		ui.Error(fmt.Sprintf(
+			"Error linking Server with Storage: %s", err))
+		state.Put("error", err)
+		ui.Error(err.Error())
+		return multistep.ActionHalt
+	}
 
-	ui.Say("Link Server with publicNetwork...")
-	client.LinkNetwork(context.Background(), server.ObjectUUID, publicNetwork.Properties.ObjectUUID, "", false, 0, nil, nil)
+	ui.Say("Linking Server with PublicNetwork...")
+	err = client.LinkNetwork(context.Background(), server.ObjectUUID, publicNetwork.Properties.ObjectUUID, "", false, 0, nil, nil)
+	if err != nil {
+		ui.Error(fmt.Sprintf(
+			"Error linking Server with PublicNetwork: %s", err))
+		state.Put("error", err)
+		ui.Error(err.Error())
+		return multistep.ActionHalt
+	}
 
-	ui.Say("Start Server...")
-	client.StartServer(context.Background(), server.ObjectUUID)
-
+	ui.Say("Starting Server...")
+	err = client.StartServer(context.Background(), server.ObjectUUID)
+	if err != nil {
+		ui.Error(fmt.Sprintf(
+			"Error starting Server: %s", err))
+		state.Put("error", err)
+		ui.Error(err.Error())
+		return multistep.ActionHalt
+	}
 	return multistep.ActionContinue
 }
 
@@ -117,12 +143,16 @@ func (s *stepCreateServer) Cleanup(state multistep.StateBag) {
 
 	if s.serverID != "" {
 		ui.Say("Shutdown Server...")
-		client.ShutdownServer(context.Background(), s.serverID)
+		err := client.StopServer(context.Background(), s.serverID)
+		if err != nil {
+			ui.Error(fmt.Sprintf(
+				"Error Shutdown server: %s", err))
+		}
 	}
 
 	if s.serverID != "" {
 		ui.Say("Destroying server...")
-		err := client.DeleteServer(context.TODO(), s.serverID)
+		err := client.DeleteServer(context.Background(), s.serverID)
 		if err != nil {
 			ui.Error(fmt.Sprintf(
 				"Error destroying server. Please destroy it manually: %s", err))
@@ -131,7 +161,7 @@ func (s *stepCreateServer) Cleanup(state multistep.StateBag) {
 
 	if s.storageID != "" {
 		ui.Say("Destroying storage...")
-		err := client.DeleteStorage(context.TODO(), s.storageID)
+		err := client.DeleteStorage(context.Background(), s.storageID)
 		if err != nil {
 			ui.Error(fmt.Sprintf(
 				"Error destroying storage. Please destroy it manually: %s", err))
@@ -140,7 +170,7 @@ func (s *stepCreateServer) Cleanup(state multistep.StateBag) {
 
 	if s.ipID != "" {
 		ui.Say("Destroying IP...")
-		err := client.DeleteIP(context.TODO(), s.ipID)
+		err := client.DeleteIP(context.Background(), s.ipID)
 		if err != nil {
 			ui.Error(fmt.Sprintf(
 				"Error destroying ip. Please destroy it manually: %s", err))

@@ -54,6 +54,8 @@ func (b *Builder) Run(ctx context.Context, ui packer.Ui, hook packer.Hook) (pack
 			SSHConfig: b.config.Comm.SSHConfigFunc(),
 		},
 		&common.StepProvision{},
+		new(stepShutdown),
+		&stepTemplate{},
 	}
 
 	// Run the steps

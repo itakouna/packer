@@ -43,7 +43,7 @@ func (s *stepCreateSSHKey) Run(ctx context.Context, state multistep.StateBag) mu
 	c.Comm.SSHPrivateKey = pem.EncodeToMemory(&priv_blk)
 	pub, _ := ssh.NewPublicKey(&priv.PublicKey)
 
-	resp, err := client.CreateSshkey(context.TODO(), gsclient.SshkeyCreateRequest{
+	resp, err := client.CreateSshkey(context.Background(), gsclient.SshkeyCreateRequest{
 		Name:   fmt.Sprintf("packer-%s", uuid.TimeOrderedUUID()),
 		Sshkey: string(bytes.Trim(ssh.MarshalAuthorizedKey(pub), "\n")),
 	})
@@ -93,7 +93,7 @@ func (s *stepCreateSSHKey) Cleanup(state multistep.StateBag) {
 	ui := state.Get("ui").(packer.Ui)
 
 	ui.Say("Deleting temporary ssh key...")
-	err := client.DeleteSshkey(context.TODO(), s.keyId)
+	err := client.DeleteSshkey(context.Background(), s.keyId)
 	if err != nil {
 		log.Printf("Error cleaning up ssh key: %s", err)
 		ui.Error(fmt.Sprintf(
