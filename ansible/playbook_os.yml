@@ -1,0 +1,32 @@
+---
+- name: Upgrade ubuntu image
+  gather_facts: false
+  hosts: all
+  vars:
+    ansible_pipelining: true
+  tasks:
+    - name: disable unattended upgrades
+      apt:
+        name: unattended-upgrades
+        state: absent
+
+    - name: update packages
+      apt:
+        upgrade: dist
+        update_cache: yes
+      when: upgrade_os == 'true'
+
+    - name: persistently disable swap
+      lineinfile:
+        path: /etc/fstab
+        state: absent
+        regexp: '\sswap\s'
+
+    - name: disable swap for current session
+      command: swapoff -a
+
+    - name: allow 'deploy' to have passwordless sudo
+      lineinfile:
+        dest: /etc/sudoers
+        line: 'deploy ALL=(ALL) NOPASSWD: ALL'
+        validate: 'visudo -cf %s'

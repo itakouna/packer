@@ -22,20 +22,12 @@ func (s *stepShutdown) Run(ctx context.Context, state multistep.StateBag) multis
 	err := client.ShutdownServer(context.Background(), serverID)
 	if err != nil {
 		// If we get an error the first time, actually report it
-		err := fmt.Errorf("Error shutting down droplet: %s", err)
+		err := fmt.Errorf("Error shutting down server: %s", err)
 		state.Put("error", err)
 		ui.Error(err.Error())
 		return multistep.ActionHalt
 	}
 
-	// err = waitForDropletState("off", dropletId, client, c.StateTimeout)
-	// if err != nil {
-	// 	// If we get an error the first time, actually report it
-	// 	err := fmt.Errorf("Error shutting down droplet: %s", err)
-	// 	state.Put("error", err)
-	// 	ui.Error(err.Error())
-	// 	return multistep.ActionHalt
-	// }
 
 	return multistep.ActionContinue
 }

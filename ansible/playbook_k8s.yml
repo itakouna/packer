@@ -1,0 +1,52 @@
+---
+- name: Initize ubuntu image with all k8s prerequisite
+  gather_facts: false
+  hosts: all
+  vars:
+    ansible_pipelining: true
+  tasks:
+    - name: install Docker
+      apt:
+        name: docker.io
+        state: present
+        update_cache: yes
+
+    - name: install APT Transport HTTPS
+      apt:
+        name: apt-transport-https
+        state: present
+
+    - name: add Kubernetes apt-key
+      apt_key:
+        url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+        state: present
+
+    - name: add Kubernetes' APT repository
+      apt_repository:
+        repo: deb http://apt.kubernetes.io/ kubernetes-xenial main
+        state: present
+        filename: 'kubernetes'
+
+    - name: pin kubelet/kubeadm versions
+      template:
+        src: "apt_preference.j2"
+        dest: "/etc/apt/preferences.d/{{ item.pkg_name }}"
+        owner: root
+        group: root
+        mode: '0644'
+      with_items:
+        - {pkg_name: kubeadm, pkg_version: "{{ k8s_version }}-*"}
+        - {pkg_name: kubectl, pkg_version: "{{ k8s_version }}-*"}
+        - {pkg_name: kubelet, pkg_version: "{{ k8s_version }}-*"}
+
+    - name: install k8s packages
+      apt:
+        name:
+          - kubelet
+          - kubeadm
+        state: latest
+
+    - name: install ufw
+      apt:
+        name: ufw
+        state: present
