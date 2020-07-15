@@ -31,6 +31,7 @@ type Config struct {
 	ServerMemory    int    `mapstructure:"server_memory" required:"true"`
 	StorageCapacity int    `mapstructure:"storage_capacity" required:"true"`
 	TemplateUUID    string `mapstructure:"template_uuid" required:"true"`
+	IsoImageUUID    string `mapstructure:"isoimage_uuid" required:"true"`
 
 	Tags []string `mapstructure:"tags" required:"false"`
 

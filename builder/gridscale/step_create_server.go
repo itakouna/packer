@@ -125,6 +125,19 @@ func (s *stepCreateServer) Run(ctx context.Context, state multistep.StateBag) mu
 		return multistep.ActionHalt
 	}
 
+	ui.Say("Linking Server with ISO-image...")
+	serverIsoImageRelationCreateRequest := gsclient.ServerIsoImageRelationCreateRequest{
+		ObjectUUID: c.IsoImageUUID,
+	}
+	err = client.CreateServerIsoImage(context.Background(), server.ObjectUUID, serverIsoImageRelationCreateRequest)
+	if err != nil {
+		ui.Error(fmt.Sprintf(
+			"Error linking Server with ISO-image: %s", err))
+		state.Put("error", err)
+		ui.Error(err.Error())
+		return multistep.ActionHalt
+	}
+
 	ui.Say("Starting Server...")
 	err = client.StartServer(context.Background(), server.ObjectUUID)
 	if err != nil {
