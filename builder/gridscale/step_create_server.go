@@ -11,9 +11,9 @@ import (
 )
 
 type stepCreateServer struct {
-	serverID  string
-	storageID string
-	ipID      string
+	serverID   string
+	storageIDs []string
+	ipID       string
 }
 
 func (s *stepCreateServer) Run(ctx context.Context, state multistep.StateBag) multistep.StepAction {
@@ -49,7 +49,7 @@ func (s *stepCreateServer) Run(ctx context.Context, state multistep.StateBag) mu
 	s.serverID = server.ObjectUUID
 	state.Put("server_id", server.ObjectUUID)
 
-	ui.Say("Creating Storage...")
+	ui.Say("Creating bootable storage...")
 	var sshkeys []string
 
 	storage, err := client.CreateStorage(
@@ -66,6 +66,7 @@ func (s *stepCreateServer) Run(ctx context.Context, state multistep.StateBag) mu
 				TemplateUUID: c.TemplateUUID,
 			},
 		})
+
 	if err != nil {
 		ui.Error(fmt.Sprintf(
 			"Error creating storage: %s", err))
@@ -73,10 +74,51 @@ func (s *stepCreateServer) Run(ctx context.Context, state multistep.StateBag) mu
 		ui.Error(err.Error())
 		return multistep.ActionHalt
 	}
-
-	s.storageID = storage.ObjectUUID
+	s.storageIDs = append(s.storageIDs, storage.ObjectUUID)
 	state.Put("storage_id", storage.ObjectUUID)
 
+	ui.Say("Linking server with bootable storage...")
+	err = client.LinkStorage(context.Background(), server.ObjectUUID, storage.ObjectUUID, true)
+	if err != nil {
+		ui.Error(fmt.Sprintf(
+			"Error linking Server with Storage: %s", err))
+		state.Put("error", err)
+		ui.Error(err.Error())
+		return multistep.ActionHalt
+	}
+
+	if c.SecondaryStorage == true {
+		ui.Say("Creating unbootable storage...")
+		storage, err := client.CreateStorage(
+			context.Background(),
+			gsclient.StorageCreateRequest{
+				Capacity:    c.StorageCapacity,
+				Name:        c.ServerName,
+				StorageType: gsclient.InsaneStorageType,
+			})
+
+		if err != nil {
+			ui.Error(fmt.Sprintf(
+				"Error creating storage: %s", err))
+			state.Put("error", err)
+			ui.Error(err.Error())
+			return multistep.ActionHalt
+		}
+
+		s.storageIDs = append(s.storageIDs, storage.ObjectUUID)
+		state.Put("storage_id", storage.ObjectUUID)
+
+		ui.Say("Linking server with unbootable storage...")
+		err = client.LinkStorage(context.Background(), server.ObjectUUID, storage.ObjectUUID, false)
+		if err != nil {
+			ui.Error(fmt.Sprintf(
+				"Error linking Server with Storage: %s", err))
+			state.Put("error", err)
+			ui.Error(err.Error())
+			return multistep.ActionHalt
+		}
+
+	}
 	ui.Say("Creating IP...")
 	ip, err := client.CreateIP(
 		context.Background(),
@@ -95,21 +137,11 @@ func (s *stepCreateServer) Run(ctx context.Context, state multistep.StateBag) mu
 	s.ipID = ip.ObjectUUID
 	state.Put("server_ip", ip.IP)
 
-	ui.Say("Linking Server with IP...")
+	ui.Say("Linking server with IP...")
 	err = client.LinkIP(context.Background(), server.ObjectUUID, ip.ObjectUUID)
 	if err != nil {
 		ui.Error(fmt.Sprintf(
 			"Error linking Server with IP: %s", err))
-		state.Put("error", err)
-		ui.Error(err.Error())
-		return multistep.ActionHalt
-	}
-
-	ui.Say("Linking Server with Storage...")
-	err = client.LinkStorage(context.Background(), server.ObjectUUID, storage.ObjectUUID, true)
-	if err != nil {
-		ui.Error(fmt.Sprintf(
-			"Error linking Server with Storage: %s", err))
 		state.Put("error", err)
 		ui.Error(err.Error())
 		return multistep.ActionHalt
@@ -125,19 +157,20 @@ func (s *stepCreateServer) Run(ctx context.Context, state multistep.StateBag) mu
 		return multistep.ActionHalt
 	}
 
-	ui.Say("Linking Server with ISO-image...")
-	serverIsoImageRelationCreateRequest := gsclient.ServerIsoImageRelationCreateRequest{
-		ObjectUUID: c.IsoImageUUID,
+	if c.IsoImageUUID != "" {
+		ui.Say("Linking Server with ISO-image...")
+		serverIsoImageRelationCreateRequest := gsclient.ServerIsoImageRelationCreateRequest{
+			ObjectUUID: c.IsoImageUUID,
+		}
+		err = client.CreateServerIsoImage(context.Background(), server.ObjectUUID, serverIsoImageRelationCreateRequest)
+		if err != nil {
+			ui.Error(fmt.Sprintf(
+				"Error linking Server with ISO-image: %s", err))
+			state.Put("error", err)
+			ui.Error(err.Error())
+			return multistep.ActionHalt
+		}
 	}
-	err = client.CreateServerIsoImage(context.Background(), server.ObjectUUID, serverIsoImageRelationCreateRequest)
-	if err != nil {
-		ui.Error(fmt.Sprintf(
-			"Error linking Server with ISO-image: %s", err))
-		state.Put("error", err)
-		ui.Error(err.Error())
-		return multistep.ActionHalt
-	}
-
 	ui.Say("Starting Server...")
 	err = client.StartServer(context.Background(), server.ObjectUUID)
 	if err != nil {
@@ -172,9 +205,9 @@ func (s *stepCreateServer) Cleanup(state multistep.StateBag) {
 		}
 	}
 
-	if s.storageID != "" {
+	for _, id := range s.storageIDs {
 		ui.Say("Destroying storage...")
-		err := client.DeleteStorage(context.Background(), s.storageID)
+		err := client.DeleteStorage(context.Background(), id)
 		if err != nil {
 			ui.Error(fmt.Sprintf(
 				"Error destroying storage. Please destroy it manually: %s", err))
